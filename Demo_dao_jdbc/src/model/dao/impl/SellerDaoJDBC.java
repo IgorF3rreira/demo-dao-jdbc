@@ -5,7 +5,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import db.DB;
 import db.DbException;
@@ -60,20 +63,11 @@ public class SellerDaoJDBC implements SellerDao {
 			if(rs.next()) {
 				
 				//PARA PODER PEGAR O ID
-				Department dep = new Department();
-				//PEGAR OS DADOS DO DEPARTMENT
-				dep.setId(rs.getInt("DepartmentId"));
-				dep.setName(rs.getString("DepName"));
+				Department dep = instantiateDepartment(rs);
 				
 				//PEGAR OS DADOS DO SELLER
-				Seller obj = new Seller();
-				obj.setId(rs.getInt("Id"));
-				obj.setName(rs.getString("Name"));
-				obj.setEmail(rs.getString("Email"));
-				obj.setBaseSalary(rs.getDouble("BaseSalary"));
-				obj.setBirthDate(rs.getDate("BirthDate"));
-				//no caso do departamento vamos querer o objeto montado q no caso é o dep que criamos
-				obj.setDepartment(dep);
+				Seller obj = instantiateSeller(rs, dep);
+				
 				return obj;
 				
 				
@@ -92,10 +86,93 @@ public class SellerDaoJDBC implements SellerDao {
 		
 	}
 
+	private Seller instantiateSeller(ResultSet rs, Department dep) throws SQLException {
+		Seller obj = new Seller();
+		obj.setId(rs.getInt("Id"));
+		obj.setName(rs.getString("Name"));
+		obj.setEmail(rs.getString("Email"));
+		obj.setBaseSalary(rs.getDouble("BaseSalary"));
+		obj.setBirthDate(rs.getDate("BirthDate"));
+		//no caso do departamento vamos querer o objeto montado q no caso é o dep que criamos
+		obj.setDepartment(dep);
+		return obj;
+	}
+
+
+	private Department instantiateDepartment(ResultSet rs) throws SQLException {
+		Department dep = new Department();
+		
+		//PEGAR OS DADOS DO DEPARTMENT
+		dep.setId(rs.getInt("DepartmentId"));
+		dep.setName(rs.getString("DepName"));
+		return dep;
+	}
+
+
 	@Override
 	public List<Seller> findAll() {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
+
+	@Override
+	public List<Seller> findByDepartment(Department department) {
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+"FROM seller INNER JOIN department "
+					+"ON seller.DepartmentId = department.Id "
+					+"WHERE DepartmentId = ? "
+					+ "ORDER BY Name ");
+			
+			st.setInt(1, department.getId());
+			rs = st.executeQuery();
+			//VERIFICAÇÃO PARA SABER SE ENCONTROU UM VENDEDOR PARA ASSIM PODER TRANSFORMAR A INFOs BUSCADAS EM ORIENTADO A OBJETOS E NAO EM FORMA DE TABELA COMO O RESULTSET TRAAS
+			
+			//LIST PARA ARMAZENAR OS RESULTADOS CASO HAJA MAIS DE UM 
+			List<Seller> list = new ArrayList<>();
+			
+			//PARA NAO FICAR GERANDO UM DEP TODA VEZ Q O WHILE PASSAR , VAMOS FAZER UM MAP PARA CONTROLAR O DEP E USAR SOMENTE UMA VEZ PARA TODOS USUARIOS ENCONTRADOS NA NOSSA BUSCA
+			Map<Integer,Department > map = new HashMap<>(); 
+			
+			while(rs.next()) {
+				
+				//AQUI VAI TENTAR BUSCAR NO MAP UM DEPARTAMENTO QUE TEM O ID 
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				//AQUI SE O DEP FOR IGUAL  A NULO (nao encontrar nenhum id no map) VAMOS INSTANCIAR O DEPARTAMENTO
+				if(dep == null) {
+					//DEPOIS DE INSTACIAR VAMOS SALVAR NO MAP PARA DEIXAR PARA PRÓXIMA VEZ VERIFICAR SE ELE JA EXISTE
+					dep = instantiateDepartment(rs);
+					//CÓDIGO PARA PODER SALVAR NO MAP
+					map.put(rs.getInt("DepartmentId"), dep);
+				}
+				
+				
+				
+				//PEGAR OS DADOS DO SELLER
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);	
+				
+			}
+			return list;
+		}
+		catch(SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+			//NAO VAMOS FECHAR CONEXAO PQ ESSA PAGINA TEM OUTRAS FUNCOES QUE VAO PRECISAR DA CONEXAO ATIVA
+		}
+		
+		
+	}
+
+	
+	
 }
