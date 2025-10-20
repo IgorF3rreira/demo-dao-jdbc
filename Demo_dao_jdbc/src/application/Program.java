@@ -20,6 +20,7 @@ public class Program {
 		System.out.println("=== teste 1: Seller findById =======");
 		
 		Seller seller = sellerDao.findById(3);
+		System.out.println(seller);
 		
 		System.out.println("\n=== teste 2: Seller findById =======");
 		Department department = new Department(2, null);
@@ -29,9 +30,18 @@ public class Program {
 		}
 		
 		
+		System.out.println("\n=== teste 3: Seller findAll =======");
+		 list = sellerDao.findAll();
+		for (Seller obj : list) {
+			System.out.println(obj);
+		} 
 		
-		//System.out.println(seller);
 		
+		System.out.println("\n=== teste 4: Seller Insert =======");
+		//O ID VAMOS COLOCAR COMO NULO POIS ELE NAO EXISTE AINDA
+		Seller newSeller = new Seller(null, "Greg", "Greg@gamil.com", new Date(), 4000.0, department);
+		sellerDao.insert(newSeller);
+		System.out.println("Inserido novo Id = " + newSeller.getId());
 		
 		
 

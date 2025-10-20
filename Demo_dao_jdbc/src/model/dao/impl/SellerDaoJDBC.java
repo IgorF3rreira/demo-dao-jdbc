@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,52 @@ public class SellerDaoJDBC implements SellerDao {
 
 	@Override
 	public void insert(Seller obj) {
-		// TODO Auto-generated method stub
+		PreparedStatement st = null;
+		try {
+			st = conn.prepareStatement(
+					"INSERT INTO seller "
+					+ "(Name, Email, BirthDate, BaseSalary, DepartmentId) "
+					+"VALUES "
+					+"(?, ?, ?, ?, ?) ",
+					//COMANDO PARA RETORNAR O ID DO ULTIMO VENDEDOR INSERIDO
+					Statement.RETURN_GENERATED_KEYS
+					);
+			
+			
+			st.setString(1, obj.getName());
+			st.setString(2, obj.getEmail());
+			st.setDate(3, new java.sql.Date(obj.getBirthDate().getTime()));
+			st.setDouble(4, obj.getBaseSalary());
+			st.setInt(5, obj.getDepartment().getId());
+			
+			int rowsAffected = st.executeUpdate();
+			
+			//VERIFICAÇÃO PARA VER SE ALGUEM FOI INSERIDO , SE O ROWS FOR MAIOR QUE 0 ENTAO INSERIU ALGUEM
+			if(rowsAffected > 0) {
+				ResultSet rs = st.getGeneratedKeys();
+				if(rs.next()) {
+				//PEGAR O VALOR DO ID GEREADO
+					int id = rs.getInt(1);
+					//VAMOS ATRIBUIR O ID GERADO AO OBJ PARA Q O OBJ JA ESTEJA COM O ID MAIS RECENTE NELE
+					obj.setId(id);
+				}
+				DB.closeResultSet(rs);
+				}
+				
+				else{
+					//CASO NENHUMA LINHA SEJA AFETADA
+				throw new DbException("Nenhuma linha foi afetada");				}
+				}
+			
+			
+		
+		catch(SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+		}
+		
 		
 	}
 
@@ -111,8 +157,57 @@ public class SellerDaoJDBC implements SellerDao {
 
 	@Override
 	public List<Seller> findAll() {
-		// TODO Auto-generated method stub
-		return null;
+		PreparedStatement st = null;
+		ResultSet rs = null;
+		
+		try {
+			st = conn.prepareStatement(
+					"SELECT seller.*,department.Name as DepName "
+					+"FROM seller INNER JOIN department "
+					+"ON seller.DepartmentId = department.Id "
+					+ "ORDER BY Name ");
+			
+
+			rs = st.executeQuery();
+			//VERIFICAÇÃO PARA SABER SE ENCONTROU UM VENDEDOR PARA ASSIM PODER TRANSFORMAR A INFOs BUSCADAS EM ORIENTADO A OBJETOS E NAO EM FORMA DE TABELA COMO O RESULTSET TRAAS
+			
+			//LIST PARA ARMAZENAR OS RESULTADOS CASO HAJA MAIS DE UM 
+			List<Seller> list = new ArrayList<>();
+			
+			//PARA NAO FICAR GERANDO UM DEP TODA VEZ Q O WHILE PASSAR , VAMOS FAZER UM MAP PARA CONTROLAR O DEP E USAR SOMENTE UMA VEZ PARA TODOS USUARIOS ENCONTRADOS NA NOSSA BUSCA
+			Map<Integer,Department > map = new HashMap<>(); 
+			
+			while(rs.next()) {
+				
+				//AQUI VAI TENTAR BUSCAR NO MAP UM DEPARTAMENTO QUE TEM O ID 
+				Department dep = map.get(rs.getInt("DepartmentId"));
+				
+				//AQUI SE O DEP FOR IGUAL  A NULO (nao encontrar nenhum id no map) VAMOS INSTANCIAR O DEPARTAMENTO
+				if(dep == null) {
+					//DEPOIS DE INSTACIAR VAMOS SALVAR NO MAP PARA DEIXAR PARA PRÓXIMA VEZ VERIFICAR SE ELE JA EXISTE
+					dep = instantiateDepartment(rs);
+					//CÓDIGO PARA PODER SALVAR NO MAP
+					map.put(rs.getInt("DepartmentId"), dep);
+				}
+				
+				
+				
+				//PEGAR OS DADOS DO SELLER
+				Seller obj = instantiateSeller(rs, dep);
+				list.add(obj);	
+				
+			}
+			return list;
+		}
+		catch(SQLException e) {
+			throw new DbException(e.getMessage());
+		}
+		finally {
+			DB.closeStatement(st);
+			DB.closeResultSet(rs);
+			//NAO VAMOS FECHAR CONEXAO PQ ESSA PAGINA TEM OUTRAS FUNCOES QUE VAO PRECISAR DA CONEXAO ATIVA
+		}
+		
 	}
 
 
