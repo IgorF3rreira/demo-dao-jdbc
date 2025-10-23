@@ -39,12 +39,24 @@ public class Program {
 		
 		System.out.println("\n=== teste 4: Seller Insert =======");
 		//O ID VAMOS COLOCAR COMO NULO POIS ELE NAO EXISTE AINDA
-		Seller newSeller = new Seller(null, "Greg", "Greg@gamil.com", new Date(), 4000.0, department);
+		Seller newSeller = new Seller(null, "Greg", "lGreg@gamil.com", new Date(), 4000.0, department);
 		sellerDao.insert(newSeller);
 		System.out.println("Inserido novo Id = " + newSeller.getId());
 		
+		System.out.println("\n=== teste 5: Seller update");
+		seller = sellerDao.findById(1);
+		seller.setName("Martha wayne");
+		sellerDao.update(seller);
+		System.out.println("Update completo");
 		
-
+		
+		System.out.println("\n=== teste 5: Seller delete =======");
+		sellerDao.deleteById(10);
+		System.out.println("Usuario deletado");
 	}
+	
+	
+	
+
 
 }
